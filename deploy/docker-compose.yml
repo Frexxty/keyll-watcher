@@ -1,0 +1,19 @@
+# Runs the Google Cloud watcher on any machine with Docker. Put keyll-watcher.env and keyll-watcher-credentials.json
+# (from `./install.sh --target onprem`) next to this file, then: docker compose up -d --build
+services:
+  keyll-watcher:
+    build: ..
+    image: keyll-watcher:local
+    command: ["node", "bin/keyll-watcher.mjs", "loop", "60"]
+    env_file: keyll-watcher.env
+    volumes:
+      # The container runs as uid 1000: make the credentials file readable by it (chmod 640, group 1000).
+      - ./keyll-watcher-credentials.json:/etc/keyll/credentials.json:ro
+      # With workload identity federation, also mount the file your identity provider writes its token to,
+      # at the path you gave install.sh as --wif-token-file.
+    restart: unless-stopped
+    read_only: true
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m

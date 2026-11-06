@@ -1,0 +1,21 @@
+# The Resend watcher on your own server. Run from the watcher directory:
+#   docker compose -f deploy/docker-compose.resend.yml up -d --build
+# Settings and secrets come from keyll-watcher.env (see the Keyll dashboard's connect page).
+services:
+  keyll-watcher-resend:
+    build: ..
+    image: keyll-watcher:local
+    # Every 15 seconds: the shorter the gap between runs, the more exactly Keyll can trace emails to a key.
+    command: ["node", "bin/keyll-watcher.mjs", "loop", "15"]
+    env_file: ../keyll-watcher.env
+    environment:
+      KEYLL_STATE_DIR: /var/lib/keyll
+    volumes:
+      - keyll-state:/var/lib/keyll
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+volumes:
+  keyll-state:

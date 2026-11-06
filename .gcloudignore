@@ -1,0 +1,5 @@
+test/
+*.md
+install.sh
+uninstall.sh
+.gcloudignore

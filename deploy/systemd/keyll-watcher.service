@@ -1,0 +1,26 @@
+# One watcher run. Triggered every minute by keyll-watcher.timer.
+# Install: copy the watcher to /opt/keyll-watcher, the two files from install.sh to /etc/keyll/
+# (keyll-watcher.env and credentials.json), then:
+#   systemctl enable --now keyll-watcher.timer
+[Unit]
+Description=Keyll watcher run
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/keyll/keyll-watcher.env
+ExecStart=/usr/bin/node /opt/keyll-watcher/bin/keyll-watcher.mjs run
+TimeoutStartSec=55
+DynamicUser=yes
+LoadCredential=credentials.json:/etc/keyll/credentials.json
+Environment=GOOGLE_APPLICATION_CREDENTIALS=%d/credentials.json
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=

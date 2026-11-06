@@ -1,0 +1,22 @@
+# The Anthropic, OpenAI or OpenRouter watcher on your own server. Run from the watcher directory:
+#   docker compose -p keyll-<provider> -f deploy/docker-compose.ai.yml up -d --build
+# Settings and the admin key come from keyll-watcher.env (see the Keyll dashboard's connect page).
+# The state volume holds the watcher's ledger: which keys it blocked and what a restore needs. Keep it.
+services:
+  keyll-watcher:
+    build: ..
+    image: keyll-watcher:local
+    # Once a minute: Anthropic's Usage API is meant to be read about once a minute, and the others change no faster.
+    command: ["node", "bin/keyll-watcher.mjs", "loop", "60"]
+    env_file: ../keyll-watcher.env
+    environment:
+      KEYLL_STATE_DIR: /var/lib/keyll
+    volumes:
+      - keyll-state:/var/lib/keyll
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+volumes:
+  keyll-state:

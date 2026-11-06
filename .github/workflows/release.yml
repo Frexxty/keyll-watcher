@@ -1,0 +1,50 @@
+# Builds and publishes the watcher image when a version tag (v1.2.3) is pushed. Lives here so it works
+# once watcher/ is its own public repository.
+#
+# The image is signed with Sigstore (keyless, tied to this workflow) and carries build provenance and an SBOM,
+# so customers can verify it was built from this repository:
+#   cosign verify ghcr.io/<owner>/keyll-watcher:<version> \
+#     --certificate-identity-regexp 'https://github.com/<owner>/keyll-watcher/.github/workflows/release.yml@refs/tags/v.*' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: npm test
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/keyll-watcher
+          tags: type=semver,pattern={{version}}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: mode=max
+          sbom: true
+      - uses: sigstore/cosign-installer@v3
+      - run: cosign sign --yes ghcr.io/${{ github.repository_owner }}/keyll-watcher@${{ steps.build.outputs.digest }}
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/keyll-watcher
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

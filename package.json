@@ -1,0 +1,14 @@
+{
+  "name": "keyll-watcher",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Reads per-key API usage from your cloud or AI provider for Keyll, and runs the block and restore commands Keyll signs, within limits you set.",
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "bin": { "keyll-watcher": "bin/keyll-watcher.mjs" },
+  "scripts": {
+    "start": "node bin/keyll-watcher.mjs run",
+    "test": "node --test test/"
+  }
+}

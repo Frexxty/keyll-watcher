@@ -1,0 +1,48 @@
+# Runs the Google Cloud watcher every minute in any Kubernetes cluster.
+# Build the image from this repository (docker build -t <your registry>/keyll-watcher:0.2.0 .), push it, and set
+# it below.
+#   kubectl create namespace keyll
+#   kubectl -n keyll create secret generic keyll-watcher-env --from-env-file=keyll-watcher.env
+#   kubectl -n keyll create secret generic keyll-watcher-credentials --from-file=credentials.json=keyll-watcher-credentials.json
+#   kubectl -n keyll apply -f cronjob.yaml
+# On GKE with Workload Identity, skip the credentials secret and the volume: bind the Kubernetes service
+# account to keyll-watcher@<project>.iam.gserviceaccount.com and the metadata server is used instead.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: keyll-watcher
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 55
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: watcher
+              image: keyll-watcher:0.2.0
+              args: ["node", "bin/keyll-watcher.mjs", "run"]
+              envFrom:
+                - secretRef: { name: keyll-watcher-env }
+              volumeMounts:
+                - { name: credentials, mountPath: /etc/keyll, readOnly: true }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+          volumes:
+            - name: credentials
+              secret: { secretName: keyll-watcher-credentials }
